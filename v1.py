@@ -6,10 +6,12 @@ from PIL import Image
 import os
 import numpy as np
 import shutil
+import pickle
 
 SIMILARITY_THRESHOLD = .5
 PATH_OF_FOLDERS = '/Users/arjunj/Desktop/ss'
-PATH_OF_SCREENSHOTS = '/Users/arjunj/Desktop' 
+PATH_OF_SCREENSHOTS = '/Users/arjunj/Desktop'
+CACHE_FILE = "embeddings_cache.pkl" 
 
 # Load pre-trained ResNet model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,26 +48,41 @@ def get_images(image_location):
         embeddings = model(images)
     
     embeddings_list = embeddings.squeeze().cpu().numpy()
+    print(type(embeddings_list))
 
     return {path: embedding for path, embedding in zip(image_paths, embeddings)}
 
 def get_folders(folder_location):
     f_centroid = {}
-    folder_location = PATH_OF_FOLDERS
+
+    if os.path.exists(CACHE_FILE):
+        print("yo")
+        with open(CACHE_FILE, 'rb') as f:
+            f_centroid = pickle.load(f)
+
+    print(len(f_centroid))
     directory = os.fsencode(folder_location)
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
         subPath = f"{folder_location}/{filename}"
         if os.path.isdir(subPath):
-            image_embeddings = get_images(subPath)
-            f_centroid[subPath] = np.mean(image_embeddings.values(), axis=0)
+            if subPath not in f_centroid:
+                image_embeddings = get_images(subPath)
+                f_centroid[subPath] = np.mean(np.vstack(list(image_embeddings.values())), axis=0)
+    print(len(f_centroid))
+     # Save updated cache
+    with open(CACHE_FILE, 'wb') as f:
+        pickle.dump(f_centroid, f)
     return f_centroid
 def cosine_similarity(e1, e2):
     return nn.functional.cosine_similarity(torch.tensor(e1, device=device), torch.tensor(e2, device=device), dim=0)
 
 def main():
-    image_embeddings = get_images(PATH_OF_SCREENSHOTS)
     folder_embeddings = get_folders(PATH_OF_FOLDERS)
+    image_embeddings = get_images(PATH_OF_SCREENSHOTS)
+    
+    
+    
 
     # Compute cosine Similarity
     for image_path in image_embeddings:
@@ -85,9 +102,18 @@ def main():
                 new_folder_path = new_folder_path = f"{PATH_OF_FOLDERS}/f{count}" 
             os.makedirs(new_folder_path)
             shutil.move(image_path, new_folder_path)
+            #update folder embedding by adding a new folder (key value pair) to the hash
+            folder_embeddings[new_folder_path] = image_embeddings[image_path]
         else:
             #move to folder
+            intial_size = len(os.listdir(max_folder_path))
             shutil.move(image_path, max_folder_path)
+            #update folder embedding
+            folder_embeddings[max_folder_path] = ((intial_size * folder_embeddings[max_folder_path]) + image_embeddings[image_path]) / (intial_size + 1)
+    with open(CACHE_FILE, 'wb') as f:
+        pickle.dump(folder_embeddings, f) 
+
+
 
 if __name__ == "__main__":
     main()
