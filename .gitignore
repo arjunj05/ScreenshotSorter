@@ -1,3 +1,4 @@
 *.docx
 *.pkl
 test.py
+venv

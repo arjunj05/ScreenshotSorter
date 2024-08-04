@@ -8,9 +8,7 @@ import numpy as np
 import shutil
 import pickle
 
-SIMILARITY_THRESHOLD = .5
-PATH_OF_FOLDERS = '/Users/arjunj/Desktop/ss'
-PATH_OF_SCREENSHOTS = '/Users/arjunj/Desktop'
+SIMILARITY_THRESHOLD = .65
 CACHE_FILE = "embeddings_cache.pkl" 
 
 # Load pre-trained ResNet model
@@ -37,7 +35,7 @@ def get_images(image_location):
         for file in os.listdir(directory):
             filename = os.fsdecode(file)
             path = f"{image_location}/{filename}"
-            if (filename.endswith(".png") or filename.endswith(".jpg")) and filename.startswith("Screenshot"): 
+            if (filename.endswith(".png") or filename.endswith(".jpg")): 
                 try:
                     image = Image.open(path).convert('RGB')
                     image = preprocess(image)
@@ -97,6 +95,9 @@ def cosine_similarity(e1, e2):
 
 def main():
     try:
+        PATH_OF_SCREENSHOTS = input("Enter the path of screenshots to be sorted: ").strip()
+        PATH_OF_FOLDERS = input("Enter the path where the sorted screenshot folders should be stored: ").strip()
+
         folder_embeddings = get_folders(PATH_OF_FOLDERS)
         image_embeddings = get_images(PATH_OF_SCREENSHOTS)
         
