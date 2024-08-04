@@ -23,8 +23,8 @@ Do you ever find your screenshots folder cluttered and disorganized? This projec
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/image-organizer.git
-    cd image-organizer
+    git clone https://github.com/arjunj05/ScreenshotSorter.git
+    cd ScreenshotSorter
     ```
 
 2. **Set up a virtual environment:**
