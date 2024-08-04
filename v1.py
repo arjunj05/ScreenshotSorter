@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from torchvision.models import resnet50
+from torchvision.models import resnet50, ResNet50_Weights
 from PIL import Image
 import os
 import numpy as np
@@ -15,7 +15,8 @@ CACHE_FILE = "embeddings_cache.pkl"
 
 # Load pre-trained ResNet model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = resnet50(pretrained=True)
+#model = resnet50(pretrained=True)
+model = resnet50(weights=ResNet50_Weights.DEFAULT)
 model = nn.Sequential(*list(model.children())[:-1])  # Remove the final classification layer
 model = model.to(device)
 model.eval()
@@ -55,7 +56,6 @@ def get_images(image_location):
             embeddings = model(images)
         
         embeddings_list = embeddings.squeeze().cpu().numpy()
-        print(type(embeddings_list))
 
         return {path: embedding for path, embedding in zip(image_paths, embeddings)}
     except Exception as e:
@@ -67,11 +67,9 @@ def get_folders(folder_location):
 
     try:
         if os.path.exists(CACHE_FILE):
-            print("yo")
             with open(CACHE_FILE, 'rb') as f:
                 f_centroid = pickle.load(f)
 
-        print(len(f_centroid))
         directory = os.fsencode(folder_location)
         for file in os.listdir(directory):
             filename = os.fsdecode(file)
@@ -81,7 +79,6 @@ def get_folders(folder_location):
                     image_embeddings = get_images(subPath)
                     if image_embeddings:
                         f_centroid[subPath] = np.mean(np.vstack(list(image_embeddings.values())), axis=0)
-        print(len(f_centroid))
          # Save updated cache
         with open(CACHE_FILE, 'wb') as f:
             pickle.dump(f_centroid, f)
@@ -91,7 +88,12 @@ def get_folders(folder_location):
         return {}
 
 def cosine_similarity(e1, e2):
-    return nn.functional.cosine_similarity(torch.tensor(e1, device=device), torch.tensor(e2, device=device), dim=0)
+    try:
+        e1 = e1.squeeze()
+        e2 = e2.squeeze()
+        return nn.functional.cosine_similarity(e1, e2, dim=0)
+    except Exception as e:
+        print(f"An error in cosine_similarity occured: {e}")
 
 def main():
     try:
